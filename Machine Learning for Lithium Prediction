@@ -1,0 +1,241 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
+from sklearn.svm import SVR
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.preprocessing import StandardScaler, RobustScaler
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import roc_curve, auc, confusion_matrix, ConfusionMatrixDisplay
+import warnings
+warnings.filterwarnings('ignore')
+# Set publication-quality style
+plt.style.use('seaborn-v0_8-whitegrid')
+sns.set_palette("husl")
+plt.rcParams.update({
+    'font.size': 10,
+    'axes.titlesize': 12,
+    'axes.labelsize': 10,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9,
+    'legend.fontsize': 9,
+    'figure.titlesize': 14,
+    'figure.dpi': 300,
+    'savefig.dpi': 300,
+    'savefig.bbox': 'tight',
+    'savefig.pad_inches': 0.1
+})
+# Load data
+df = pd.read_csv('Carbonitites for ML.csv')
+# ============================================================================
+# DATA PREPROCESSING
+# ============================================================================
+print("Preprocessing data...")
+
+# Remove outliers from target using IQR
+q1 = df['LI(PPM)'].quantile(0.25)
+q3 = df['LI(PPM)'].quantile(0.75)
+iqr = q3 - q1
+lower_bound = q1 - 1.5 * iqr
+upper_bound = q3 + 1.5 * iqr
+df_clean = df[(df['LI(PPM)'] >= lower_bound) & (df['LI(PPM)'] <= upper_bound)].copy()
+# Prepare features and target
+X = df_clean.drop(columns=['ID', 'LATITUDE MAX', 'LONGITUDE MIN', 'LI(PPM)'], errors='ignore')
+y = df_clean['LI(PPM)']
+
+# Handle missing values
+missing_percent = X.isnull().sum() / len(X) * 100
+cols_to_keep = missing_percent[missing_percent <= 50].index
+X = X[cols_to_keep]
+# Select numeric columns and remove zero variance
+numeric_cols = X.select_dtypes(include=[np.number]).columns
+X_numeric = X[numeric_cols]
+numeric_variance = X_numeric.var()
+zero_var_cols = numeric_variance[numeric_variance == 0].index
+X_numeric = X_numeric.drop(columns=zero_var_cols)
+# Select features correlated with target
+correlations = X_numeric.apply(lambda col: col.corr(y) if col.notna().any() else 0)
+abs_correlations = correlations.abs()
+relevant_features = abs_correlations[abs_correlations > 0.1].index
+X_selected = X_numeric[relevant_features]
+# Impute and scale
+imputer = SimpleImputer(strategy='median')
+X_imputed = pd.DataFrame(imputer.fit_transform(X_selected), columns=X_selected.columns)
+scaler = RobustScaler()
+X_scaled = scaler.fit_transform(X_imputed)
+X_scaled = pd.DataFrame(X_scaled, columns=X_imputed.columns)
+# Remove multicollinearity
+corr_matrix = X_scaled.corr().abs()
+upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+to_drop = [column for column in upper.columns if any(upper[column] > 0.85)]
+X_final = X_scaled.drop(columns=to_drop)
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_final, y, test_size=0.2, random_state=42, 
+    stratify=pd.qcut(y, q=4, duplicates='drop')
+)
+# ============================================================================
+# FIGURE 1: COMPARISON OF ALL ML ALGORITHMS - ACTUAL VS PREDICTED
+# ============================================================================
+print("Training multiple ML algorithms...")
+
+# Define all algorithms to compare
+algorithms = {
+    'Linear Regression': LinearRegression(),
+    'Ridge Regression': Ridge(alpha=1.0, random_state=42),
+    'Lasso Regression': Lasso(alpha=0.01, random_state=42),
+    'Elastic Net': ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42),
+    'Support Vector Regressor': SVR(kernel='rbf', C=100, gamma=0.1),
+    'k-Nearest Neighbors': KNeighborsRegressor(n_neighbors=5),
+    'Decision Tree': DecisionTreeRegressor(max_depth=10, random_state=42),
+    'Random Forest': RandomForestRegressor(n_estimators=200, max_depth=10, 
+                                          min_samples_split=5, min_samples_leaf=2,
+                                          random_state=42, n_jobs=-1),
+    'Gradient Boosting': GradientBoostingRegressor(n_estimators=200, learning_rate=0.1,
+                                                  max_depth=5, random_state=42)
+}
+# Store results
+results = []
+all_predictions = {}
+
+# Train all models and collect predictions
+for name, model in algorithms.items():
+    print(f"Training {name}...")
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    all_predictions[name] = y_pred
+    # Calculate metrics
+    results.append({
+        'Algorithm': name,
+        'R²': r2_score(y_test, y_pred),
+        'MAE': mean_absolute_error(y_test, y_pred),
+        'RMSE': np.sqrt(mean_squared_error(y_test, y_pred)),
+        'Max Error': np.max(np.abs(y_test - y_pred)),
+        'Explained Variance': 1 - (np.var(y_test - y_pred) / np.var(y_test))
+    })
+
+results_df = pd.DataFrame(results).sort_values('R²', ascending=False)
+best_model_name = results_df.iloc[0]['Algorithm']
+best_model = algorithms[best_model_name]
+best_predictions = all_predictions[best_model_name]
+
+print(f"\nBest model: {best_model_name}")
+print(f"Best R²: {results_df.iloc[0]['R²']:.4f}")
+
+# ============================================================================
+# ============================================================================
+# FIGURE 1: ACTUAL VS PREDICTED FOR ALL ALGORITHMS (3x3 GRID)
+# ============================================================================
+
+# Define algorithms to include (excluding SVR, KNN, and Decision Tree)
+filtered_algorithms = {
+    'Linear Regression': LinearRegression(),
+    'Ridge Regression': Ridge(alpha=1.0, random_state=42),
+    'Lasso Regression': Lasso(alpha=0.01, random_state=42),
+    'Elastic Net': ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42),
+    'Random Forest': RandomForestRegressor(n_estimators=200, max_depth=10, 
+                                          min_samples_split=5, min_samples_leaf=2,
+                                          random_state=42, n_jobs=-1),
+    'Gradient Boosting': GradientBoostingRegressor(n_estimators=200, learning_rate=0.1,
+                                                  max_depth=5, random_state=42)
+}
+
+# Create a filtered predictions dictionary
+filtered_predictions = {name: all_predictions[name] for name in filtered_algorithms.keys()}
+
+# Determine grid layout based on number of algorithms
+num_algorithms = len(filtered_algorithms)
+rows = 2  # 2 rows for 6 algorithms
+cols = 3  # 3 columns for 6 algorithms
+
+# Create figure with appropriate size
+fig1, axes1 = plt.subplots(rows, cols, figsize=(16, 12))  # Adjusted height for 2 rows
+
+# Flatten axes for easier iteration
+axes_flat = axes1.flatten()
+
+# Alphabet labels for subplots (only for the algorithms we're keeping)
+alphabet_labels = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
+
+for idx, (name, y_pred) in enumerate(filtered_predictions.items()):
+    ax = axes_flat[idx]
+    
+    # Add alphabet label to title
+    ax.set_title(f'{alphabet_labels[idx]} {name}', fontweight='bold', loc='left', pad=10, color='black')
+    
+    # Scatter plot
+    scatter = ax.scatter(y_test, y_pred, alpha=0.6, s=30, 
+                        c=abs(y_test - y_pred), cmap='coolwarm',
+                        edgecolors='black', linewidth=0.5, vmin=0, vmax=20)
+    
+    # Perfect prediction line
+    min_val = min(y_test.min(), y_pred.min())
+    max_val = max(y_test.max(), y_pred.max())
+    perfect_line, = ax.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, 
+                          label='Perfect Prediction')
+    
+    # Calculate metrics for this algorithm
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    
+    # Add metrics as text
+    metrics_text = f"R² = {r2:.3f}\nMAE = {mae:.2f}\nRMSE = {rmse:.2f}"
+    ax.text(0.05, 0.95, metrics_text, transform=ax.transAxes, fontsize=10,
+           verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+           fontweight='bold', color='black')
+    
+    # Highlight best model
+    if name == best_model_name:
+        for spine in ax.spines.values():
+            spine.set_linewidth(3)
+            spine.set_color('green')
+    
+    # Set axis labels with bold black font
+    ax.set_xlabel('Analysed Li (PPM)', fontweight='bold', fontsize=13, color='black')
+    ax.set_ylabel('Predicted Li (PPM)', fontweight='bold', fontsize=13, color='black')
+    
+    # Make tick labels bold and black
+    ax.tick_params(axis='both', which='major', labelsize=12, width=2, 
+                   color='black', labelcolor='black')
+    
+    # Make axis numbers bold by accessing the tick label properties
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontweight('bold')
+        label.set_color('black')
+    
+    # Add legend with bold black text
+    if idx == 0:  # Add legend to first subplot only to avoid clutter
+        legend = ax.legend(handles=[perfect_line], loc='lower right', 
+                          fontsize=11, framealpha=0.9)
+        # Make legend text bold and black
+        for text in legend.get_texts():
+            text.set_fontweight('bold')
+            text.set_color('black')
+    
+    ax.grid(True, alpha=0.3, color='gray', linewidth=0.5)
+    ax.set_aspect('equal', adjustable='box')
+    
+    # Set consistent axis limits
+    ax.set_xlim([min_val - 5, max_val + 5])
+    ax.set_ylim([min_val - 5, max_val + 5])
+    
+    # Make axis spines bold and black
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.5)
+        spine.set_color('black')
+
+# Remove empty subplots if any
+for idx in range(len(filtered_algorithms), rows * cols):
+    fig1.delaxes(axes_flat[idx])
+
+plt.tight_layout()
+plt.savefig('Comparison_of_Selected_ML_Algorithms_mod.png', dpi=300, bbox_inches='tight')
+plt.show()
