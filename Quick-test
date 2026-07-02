@@ -1,0 +1,31 @@
+# generate_example_data.py
+import pandas as pd
+import numpy as np
+
+np.random.seed(42)
+n_samples = 100
+
+data = {
+    'ID': range(1, n_samples + 1),
+    'LI(PPM)': np.random.gamma(shape=2, scale=10, size=n_samples) + 5,
+    'SiO2': np.random.normal(45, 8, n_samples),
+    'TiO2': np.random.normal(1.5, 0.8, n_samples),
+    'Al2O3': np.random.normal(12, 4, n_samples),
+    'Fe2O3': np.random.normal(8, 3, n_samples),
+    'MnO': np.random.normal(0.3, 0.2, n_samples),
+    'MgO': np.random.normal(5, 2, n_samples),
+'CaO': np.random.normal(20, 5, n_samples),
+    'Na2O': np.random.normal(3, 1.5, n_samples),
+    'K2O': np.random.normal(2, 1, n_samples),
+    'P2O5': np.random.normal(1, 0.5, n_samples),
+    'LATITUDE MAX': np.random.uniform(-30, 30, n_samples),
+    'LONGITUDE MIN': np.random.uniform(-180, 180, n_samples),
+}
+
+# Add some correlations with Li
+for col in ['SiO2', 'TiO2', 'Al2O3']:
+    data[col] += data['LI(PPM)'] * np.random.uniform(-0.5, 0.5) * 0.1
+
+df = pd.DataFrame(data)
+df.to_csv('example_data.csv', index=False)
+print(" Example data created: example_data.csv")
