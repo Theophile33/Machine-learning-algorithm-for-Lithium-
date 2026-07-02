@@ -35,14 +35,24 @@ The pipeline compares the following algorithms:
 * Random Forest
 * Gradient Boosting
 
-Performance Metrics
+Performance Metrics:
 
 * R² Score: Coefficient of determination
 * Mean Absolute Error (MAE)
 * Root Mean Squared Error (RMSE)
 
+  How to run the code:
 
-Results Visualization
+1. Load CSV data
+2. Preprocess (outlier removal, feature selection, scaling)
+3. Train-test split (80/20 with stratified sampling)
+4. Train all 9 models
+5. Identify best performing model
+6. Generate comparison figure (6 selected models)
+7. Save figure as 'Comparison_of_Selected_ML_Algorithms_mod.png'
+
+
+Results Visualization:
 
 The script generates a 2x3 grid of scatter plots comparing actual vs predicted Lithium concentrations for 6 selected algorithms:
 * Linear Regression
