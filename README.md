@@ -49,7 +49,7 @@ Performance Metrics:
 4. Train all 9 models
 5. Identify best performing model
 6. Generate comparison figure (6 selected models)
-7. Save figure as 'Comparison_of_Selected_ML_Algorithms_mod.png'
+7. Save figure 
 
 
 Results Visualization:
