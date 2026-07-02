@@ -6,7 +6,7 @@ The project contains a comprehensive machine learning pipeline for predicting Li
 
 Requirements
 
-*Jupyter Notebook 
+*Jupyter Notebook 7.2.2 
 * Python 3.7
 * pandas 1.3.0
 * numpy 1.21.0
