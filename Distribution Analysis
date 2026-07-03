@@ -1,0 +1,141 @@
+ DISTRIBUTION
+==========================================================================
+
+#  figure with adjusted subplot spacing using gridspec_kw
+fig1, axes1 = plt.subplots(2, 2, figsize=(20, 18), 
+                           gridspec_kw={'hspace': 0.15, 'wspace': 0.25})  # Added a little space (from 0.125 to 0.15)
+
+#  Histogram with KDE
+ax = axes1[0, 0]
+ax.hist(df['LI(PPM)'].dropna(), bins=50, density=True, alpha=0.6, color='skyblue', edgecolor='black', linewidth=1.5)
+ax.set_xlabel('Li Concentration (PPM)', fontweight='normal', fontsize=18, color='black')
+ax.set_ylabel('Density', fontweight='normal', fontsize=18, color='black')
+# Add (a) label at center top of the subplot
+ax.text(0.5, 0.98, '(a)', transform=ax.transAxes, fontsize=20, fontweight='bold', 
+        verticalalignment='top', horizontalalignment='center', 
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+ax.grid(True, alpha=0.3, linewidth=0.8)
+
+#  KDE
+kde = stats.gaussian_kde(df['LI(PPM)'].dropna())
+x_range = np.linspace(df['LI(PPM)'].min(), df['LI(PPM)'].max(), 1000)
+ax.plot(x_range, kde(x_range), 'r-', linewidth=2.5, label='KDE')
+
+# A legend with normal weight text
+legend = ax.legend(fontsize=16, framealpha=0.9)
+for text in legend.get_texts():
+    text.set_fontweight('normal')
+    text.set_color('black')
+
+#  labels normal weight and black with fontsize 18
+ax.tick_params(axis='both', which='major', labelsize=18, width=1.5, 
+               color='black', labelcolor='black')
+for label in ax.get_xticklabels() + ax.get_yticklabels():
+    label.set_fontweight('normal')
+    label.set_color('black')
+
+#  axis spines black
+for spine in ax.spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')
+
+#  Boxplot
+ax = axes1[0, 1]
+bp = ax.boxplot(df['LI(PPM)'].dropna(), vert=False, patch_artist=True, 
+                boxprops=dict(facecolor='lightcoral', linewidth=1.5),
+                whiskerprops=dict(linewidth=1.5),
+                capprops=dict(linewidth=1.5),
+                medianprops=dict(linewidth=2, color='darkred'),
+                flierprops=dict(marker='o', markersize=6, markeredgecolor='black', alpha=0.5))
+ax.set_xlabel('Li Concentration (PPM)', fontweight='normal', fontsize=18, color='black')
+#  label at center top of the subplot
+ax.text(0.5, 0.98, '(b)', transform=ax.transAxes, fontsize=20, fontweight='bold', 
+        verticalalignment='top', horizontalalignment='center',
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+ax.grid(True, alpha=0.3, axis='x', linewidth=0.8)
+
+#  labels normal weight and black with fontsize 18
+ax.tick_params(axis='both', which='major', labelsize=18, width=1.5, 
+               color='black', labelcolor='black')
+for label in ax.get_xticklabels() + ax.get_yticklabels():
+    label.set_fontweight('normal')
+    label.set_color('black')
+
+#  axis spines black
+for spine in ax.spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')
+
+#  Q-Q plot
+ax = axes1[1, 0]
+#  Q-Q plot 
+from scipy import stats
+(quantiles, values), (slope, intercept, r) = stats.probplot(df['LI(PPM)'].dropna(), dist="norm", plot=None)
+
+# Plot the points
+ax.plot(quantiles, values, 'o', markersize=5, markeredgecolor='black', 
+        markerfacecolor='steelblue', alpha=0.6, linestyle='None')
+
+#  reference line manually 
+x_line = np.array([min(quantiles), max(quantiles)])
+y_line = slope * x_line + intercept
+ax.plot(x_line, y_line, 'r-', linewidth=2.5)
+
+#  labels
+ax.set_xlabel('Theoretical Quantiles', fontweight='normal', fontsize=18, color='black')
+ax.set_ylabel('Sample Quantiles', fontweight='normal', fontsize=18, color='black')
+# Add (c) label at center top of the subplot
+ax.text(0.5, 0.98, '(c)', transform=ax.transAxes, fontsize=20, fontweight='bold', 
+        verticalalignment='top', horizontalalignment='center',
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+ax.grid(True, alpha=0.3, linewidth=0.8)
+
+#  labels normal weight and black with fontsize 18
+ax.tick_params(axis='both', which='major', labelsize=18, width=1.5, 
+               color='black', labelcolor='black')
+for label in ax.get_xticklabels() + ax.get_yticklabels():
+    label.set_fontweight('normal')
+    label.set_color('black')
+
+# axis spines black
+for spine in ax.spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')
+
+# Cumulative Distribution
+ax = axes1[1, 1]
+sorted_data = np.sort(df['LI(PPM)'].dropna())
+cdf = np.arange(1, len(sorted_data)+1) / len(sorted_data)
+ax.plot(sorted_data, cdf, linewidth=2.5, color='green')
+ax.set_xlabel('Li Concentration (PPM)', fontweight='normal', fontsize=18, color='black')
+ax.set_ylabel('Cumulative Probability', fontweight='normal', fontsize=18, color='black')
+# Add (d) label at center top of the subplot
+ax.text(0.5, 0.98, '(d)', transform=ax.transAxes, fontsize=20, fontweight='bold', 
+        verticalalignment='top', horizontalalignment='center',
+        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+ax.grid(True, alpha=0.3, linewidth=0.8)
+
+#  reference lines for key percentiles 
+percentiles = [25, 50, 75]
+colors = ['orange', 'red', 'orange']
+for p, color in zip(percentiles, colors):
+    value = np.percentile(sorted_data, p)
+    ax.axvline(x=value, color=color, linestyle='--', linewidth=1.5, alpha=0.7)
+
+#  labels normal weight and black with fontsize 18
+ax.tick_params(axis='both', which='major', labelsize=18, width=1.5, 
+               color='black', labelcolor='black')
+for label in ax.get_xticklabels() + ax.get_yticklabels():
+    label.set_fontweight('normal')
+    label.set_color('black')
+
+#  axis spines black
+for spine in ax.spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')
+
+#  tight_layout 
+plt.tight_layout(pad=1.5, h_pad=1.5, w_pad=2.0)  # Added a little space (from 1.25 to 1.5)
+
+plt.savefig('Distribution_Analysis.tiff', dpi=600, bbox_inches='tight', facecolor='white')
+plt.show()
