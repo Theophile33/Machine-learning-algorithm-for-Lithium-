@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from io import StringIO
+
+#  CSV data
+# Since the file content is large, I'll read it directly
+df = pd.read_csv('Carbonitites for ML.csv')
+
+#  info about the dataset
+print(f"Dataset shape: {df.shape}")
+print(f"Number of columns: {len(df.columns)}")
+print("\nFirst few columns:")
+print(df.columns[:20].tolist())
+
+#  key geochemical variables
+#  major and trace elements commonly used in petrology
+key_elements = ['SIO2(WT%)', 'TIO2(WT%)', 'AL2O3(WT%)', 'FEO(WT%)', 'CAO(WT%)', 
+                'MGO(WT%)', 'MNO(WT%)', 'K2O(WT%)', 'NA2O(WT%)', 'P2O5(WT%)',
+                'CO2(WT%)', 'F(WT%)', 'SR(PPM)', 'BA(PPM)', 'NB(PPM)', 
+                'LA(PPM)', 'CE(PPM)', 'ND(PPM)', 'Y(PPM)', 'ZR(PPM)']
+
+# Create correlation matrix
+corr_matrix = df[available_cols].corr()
+
+# Create the heatmap
+plt.figure(figsize=(14, 12))
+
+# Create heatmap with annotations
+sns.heatmap(corr_matrix, 
+            annot=True,  # Show correlation values
+            fmt='.2f',   # Format to 2 decimal places
+            cmap='RdBu_r',  # Red-Blue colormap (red for positive, blue for negative)
+            center=0,    # Center the colormap at 0
+            square=True, # Make cells square
+            linewidths=0.5,  # Add lines between cells
+            cbar_kws={"shrink": 0.8, "label": "Correlation Coefficient"})
+
+plt.title('Correlation Heatmap of Key Geochemical Variables\nin Carbonatites', 
+          fontsize=16, fontweight='bold')
+plt.xticks(rotation=45, ha='right', fontsize=10)
+plt.yticks(rotation=0, fontsize=10)
+plt.tight_layout()
+plt.savefig('carbonatite_correlation_heatmap.png', dpi=300, bbox_inches='tight')
+plt.show()
