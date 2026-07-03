@@ -1,0 +1,103 @@
+ UNCERTAINTY ANALYSIS
+
+#  predictions from multiple trees in the forest
+tree_predictions = []
+for tree in rf_model.estimators_:
+    tree_predictions.append(tree.predict(X_test))
+tree_predictions = np.array(tree_predictions)
+
+# Calculate statistics
+mean_predictions = np.mean(tree_predictions, axis=0)
+std_predictions = np.std(tree_predictions, axis=0)
+confidence_interval = 1.96 * std_predictions  # 95% CI
+
+# Create figure with 1x2 layout  
+fig7, axes7 = plt.subplots(1, 2, figsize=(20, 9), dpi=600)
+
+
+plt.rcParams.update({
+    'font.size': 18,
+    'axes.labelsize': 18,
+    'axes.titlesize': 18,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.fontsize': 16,
+    'figure.titlesize': 18,
+    'font.weight': 'normal',
+    'axes.titleweight': 'normal','axes.labelweight': 'normal'
+})
+
+#  Prediction with Confidence Intervals
+sorted_idx = np.argsort(y_test)
+x_sorted = np.arange(len(y_test))
+
+axes7[0].fill_between(x_sorted, 
+                      mean_predictions[sorted_idx] - confidence_interval[sorted_idx],
+                      mean_predictions[sorted_idx] + confidence_interval[sorted_idx],
+                      alpha=0.3, color='gray', label='95% Confidence Interval')
+axes7[0].plot(x_sorted, y_test.values[sorted_idx], 'b-', linewidth=1.5, 
+              alpha=0.8, label='Actual Values')
+axes7[0].plot(x_sorted, mean_predictions[sorted_idx], 'r-', linewidth=2,
+              label='Predicted Mean')
+axes7[0].set_xlabel('Sample Index (Sorted by Actual Li)', fontsize=18)
+axes7[0].set_ylabel('Li Concentration (PPM)', fontsize=18)
+
+# label at upper right corner - using axes coordinates
+axes7[0].annotate('(a)', xy=(0.98, 0.98), xycoords='axes fraction', 
+                  fontsize=20, fontweight='bold', ha='right', va='top',
+                  bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+
+#  legend 
+axes7[0].legend(loc='lower right', framealpha=0.9, fontsize=16)
+axes7[0].grid(True, alpha=0.3, linestyle='--')
+axes7[0].tick_params(axis='both', which='major', labelsize=18, width=1.5)
+
+#  black for subplot 
+for spine in axes7[0].spines.values():
+    spine.set_linewidth(1.5)spine.set_color('black')
+
+#  Uncertainty vs Prediction Magnitude
+scatter = axes7[1].scatter(mean_predictions, std_predictions, 
+                           c=abs(y_test - mean_predictions), 
+                           cmap='viridis', alpha=0.7, s=80, 
+                           edgecolors='black', linewidth=0.5)
+axes7[1].set_xlabel('Predicted Li Concentration (PPM)', fontsize=18)
+axes7[1].set_ylabel('Prediction Uncertainty (Std Dev)', fontsize=18)
+
+#  label at upper right corner - using axes coordinates
+axes7[1].annotate('(b)', xy=(0.98, 0.98), xycoords='axes fraction', 
+                  fontsize=20, fontweight='bold', ha='right', va='top',
+                  bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+
+axes7[1].grid(True, alpha=0.3, linestyle='--')
+axes7[1].tick_params(axis='both', which='major', labelsize=18, width=1.5)
+
+#  spines black for subplot 
+for spine in axes7[1].spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')# Add colorbar with larger font
+cbar = plt.colorbar(scatter, ax=axes7[1], label='Absolute Prediction Error (PPM)')
+cbar.ax.tick_params(labelsize=16)
+cbar.set_label('Absolute Prediction Error (PPM)', fontsize=16, fontweight='normal')
+
+# Make colorbar spine black
+cbar.outline.set_linewidth(1.5)
+cbar.outline.set_edgecolor('black')
+
+# Add trend line to show relationship
+from scipy import stats
+z = np.polyfit(mean_predictions, std_predictions, 1)
+p = np.poly1d(z)
+axes7[1].plot(np.sort(mean_predictions), p(np.sort(mean_predictions)), 
+             'r--', linewidth=2, alpha=0.8, label=f'Trend: slope = {z[0]:.3f}')
+axes7[1].legend(loc='upper left', fontsize=14)
+
+
+plt.tight_layout()
+plt.subplots_adjust(wspace=0.3)
+
+# Save with high resolution for publication
+plt.savefig('Prediction_Uncertainty_Analysis.tiff', dpi=600, bbox_inches='tight', 
+            facecolor='white', edgecolor='none')
+
+plt.show()
