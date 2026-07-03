@@ -1,0 +1,131 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch, Rectangle
+from matplotlib.lines import Line2D
+
+# Set publication-quality parameters
+plt.rcParams['font.family'] = 'Arial'
+plt.rcParams['font.size'] = 14
+plt.rcParams['axes.linewidth'] = 1.5
+plt.rcParams['xtick.major.width'] = 1.5
+plt.rcParams['ytick.major.width'] = 1.5
+plt.rcParams['xtick.labelsize'] = 18
+plt.rcParams['ytick.labelsize'] = 18
+plt.rcParams['legend.fontsize'] = 13
+
+
+#  results by R² for consistent ordering
+results_sorted = results_filtered.sort_values('R²', ascending=True).copy()
+results_sorted['Algorithm_Display'] = results_sorted['Algorithm']
+
+
+# VERTICAL BAR CHART (Single axis - R², with MAE and RMSE normalized)
+
+
+#  figure with optimal size for publication
+fig, ax = plt.subplots(figsize=(20, 10))
+
+#  x-axis positions
+x = np.arange(len(results_sorted))
+width = 0.25  # Width of bars
+
+# Normalize MAE and RMSE to 0-1 scale for plotting on same axis as R²
+max_mae = results_sorted['MAE'].max()
+max_rmse = results_sorted['RMSE'].max()
+
+# Plot all metrics 
+bars1 = ax.bar(x - width, results_sorted['R²'], width, 
+               color='#2E86AB', edgecolor='black', 
+               linewidth=2, alpha=0.85, label='R² Score', zorder=2)
+
+bars2 = ax.bar(x, results_sorted['MAE'] / max_mae, width, 
+               color='#A23B72', edgecolor='black', 
+               linewidth=2, alpha=0.85, label='MAE (normalized)', zorder=1)
+
+bars3 = ax.bar(x + width, results_sorted['RMSE'] / max_rmse, width, 
+               color='#F18F01', edgecolor='black', 
+               linewidth=2, alpha=0.85, label='RMSE (normalized)', zorder=0)
+
+# Configure axis - EXTENDED Y-AXIS TO 1.4 for R²
+ax.set_ylabel('R² Score', 
+              fontsize=18, fontweight='normal', labelpad=10)
+ax.set_ylim(-0.05, 1.45)  # Adjusted to give room for R² labels on top
+
+# Set x-axis labels (algorithm names)
+ax.set_xticks(x)
+ax.set_xticklabels(results_sorted['Algorithm_Display'], fontsize=18, fontweight='normal', rotation=45, ha='right')
+ax.tick_params(axis='x', labelsize=18, width=2)
+ax.tick_params(axis='y', labelsize=18, width=2)
+
+#  value labels on bars - R² values 
+for i, (idx, row) in enumerate(results_sorted.iterrows()):
+    # R² labels (blue) - placed ON TOP of the bar, shifted LEFT by 0.08
+    r2_value = row['R²']
+    # Position label slightly above the bar top and shifted left
+    label_y = r2_value + 0.03  # Small offset above the bar
+    label_x = i - width - 0.08  # Shifted left by 0.08 to avoid overlapping with MAE bar
+    ax.text(label_x, label_y, f"{r2_value:.3f}", 
+            ha='center', va='bottom', fontsize=18, fontweight='bold', 
+            color='#2E86AB')
+    
+    # MAE labels 
+    mae_value = row['MAE']
+    ax.text(i, row['MAE']/max_mae + 0.02, f"{mae_value:.2f}", 
+            ha='center', va='bottom', fontsize=18, fontweight='bold', color='#A23B72')
+    
+    # RMSE labels 
+    rmse_value = row['RMSE']
+    ax.text(i + width, row['RMSE']/max_rmse + 0.02, f"{rmse_value:.2f}", 
+            ha='center', va='bottom', fontsize=18, fontweight='bold', color='#F18F01')
+
+#  grid 
+ax.grid(True, axis='y', alpha=0.3, linestyle='--', linewidth=1, zorder=-1)
+
+#  custom legend elements
+legend_elements = [
+    Patch(facecolor='#2E86AB', edgecolor='black', label='R² Score'),
+    Patch(facecolor='#A23B72', edgecolor='black', label='MAE'),
+    Patch(facecolor='#F18F01', edgecolor='black', label='RMSE')
+]
+
+legend = ax.legend(handles=legend_elements, 
+                   loc='upper right',  # Position at upper right inside plot
+                   fontsize=14, 
+                   frameon=True, 
+                   fancybox=True, 
+                   shadow=True, 
+                   ncol=1,  # Vertical layout
+                   facecolor='white',
+                   edgecolor='black',
+                   framealpha=0.92)
+
+legend.set_zorder(100)
+legend.get_frame().set_zorder(100)
+legend.get_frame().set_linewidth(2)
+
+legend.get_frame().set_alpha(0.92)
+
+for spine in ax.spines.values():
+    spine.set_visible(True)  # Make all spines visible
+    spine.set_linewidth(3)   # Set border thickness
+    spine.set_edgecolor('black')  # Set border color to black
+    spine.set_zorder(150)    # Ensure border is visible
+
+ax.spines['top'].set_color('black')
+ax.spines['bottom'].set_color('black')
+ax.spines['left'].set_color('black')
+ax.spines['right'].set_color('black')
+
+#  background color for better contrast
+ax.set_facecolor('#FAFAFA')
+fig.patch.set_facecolor('white')
+
+#  layout to prevent label cutoff
+plt.tight_layout()
+
+# Save 
+plt.savefig('Metrics_Performance.tiff', dpi=600, bbox_inches='tight', facecolor='white')
+
+# Display the plot
+plt.show()
