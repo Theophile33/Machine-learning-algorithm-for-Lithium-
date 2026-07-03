@@ -1,0 +1,56 @@
+
+# FIGURE: FEATURE IMPORTANCE ANALYSIS
+
+print("Analyzing feature importance...")
+
+#  the best model (Random Forest from your results)
+best_model = RandomForestRegressor(n_estimators=200, max_depth=10, 
+                                   min_samples_split=5, min_samples_leaf=2,
+                                   random_state=42, n_jobs=-1)
+best_model.fit(X_train, y_train)
+
+#  feature importances from Random Forest
+feature_importances = best_model.feature_importances_
+feature_names = X_final.columns
+
+# Sort features by importance
+sorted_idx = np.argsort(feature_importances)
+sorted_features = feature_names[sorted_idx]
+sorted_importances = feature_importances[sorted_idx]
+
+#  figure
+fig, ax = plt.subplots(figsize=(12, 10))
+
+#  horizontal bar chart
+colors = plt.cm.viridis(np.linspace(0, 0.8, len(sorted_features)))
+bars = ax.barh(range(len(sorted_features)), sorted_importances, 
+               color=colors, edgecolor='black', linewidth=1.5)
+
+#  labels on bars
+for i, (bar, importance) in enumerate(zip(bars, sorted_importances)):
+    ax.text(importance + 0.002, bar.get_y() + bar.get_height()/2, 
+            f'{importance:.3f}', va='center', ha='left', 
+            fontsize=12, fontweight='bold')
+
+#  the plot
+ax.set_yticks(range(len(sorted_features)))
+ax.set_yticklabels(sorted_features, fontsize=12, fontweight='normal')
+ax.set_xlabel('Feature Importance Score', fontsize=14, fontweight='normal')
+ax.set_ylabel('Features', fontsize=14, fontweight='normal')
+ax.set_title('Random Forest Feature Importance for Li Concentration Prediction', 
+             fontsize=16, fontweight='normal', pad=20)
+
+# grid
+ax.grid(True, axis='x', alpha=0.3, linestyle='--', linewidth=0.8)
+
+# Make spines black
+for spine in ax.spines.values():
+    spine.set_linewidth(1.5)
+    spine.set_color('black')
+
+# Adjust tick parameters
+ax.tick_params(axis='both', which='major', labelsize=12, width=1.5)
+
+plt.tight_layout()
+plt.savefig('Feature_Importance.tiff', dpi=600, bbox_inches='tight', facecolor='white')
+plt.show()
